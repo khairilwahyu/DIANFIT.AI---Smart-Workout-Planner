@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIANFIT.AI - Perencana Latihan Pintar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        neon: {
+                            400: '#39ff14', // Classic neon green
+                            500: '#32cc12',
+                        },
+                        dark: {
+                            900: '#0f1115',
+                            800: '#1a1d24',
+                            700: '#272b36',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f1115;
+            color: #e2e8f0;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(57, 255, 20, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(57, 255, 20, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        /* Glassmorphism utilities */
+        .glass {
+            background: rgba(26, 29, 36, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-panel {
+            background: rgba(39, 43, 54, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(57, 255, 20, 0.1);
+        }
+
+        /* Neon Glows */
+        .neon-text {
+            color: #39ff14;
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+        }
+        .neon-border:hover, .neon-border.selected {
+            border-color: #39ff14;
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
+        }
+        .neon-bg {
+            background-color: #39ff14;
+            color: #0f1115;
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+        }
+        .neon-bg:hover {
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.6);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f1115; }
+        ::-webkit-scrollbar-thumb { background: #272b36; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #39ff14; }
+
+        /* SVG Muscle Map Styles */
+        .muscle-svg {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        .muscle-group {
+            fill: #374151; /* gray-700 */
+            stroke: #1f2937; /* gray-800 */
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .muscle-group:hover {
+            fill: rgba(57, 255, 20, 0.4);
+            stroke: #39ff14;
+        }
+        .muscle-group.selected {
+            fill: rgba(57, 255, 20, 0.8);
+            stroke: #39ff14;
+            filter: drop-shadow(0 0 5px rgba(57, 255, 20, 0.5));
+        }
+        .body-outline {
+            fill: none;
+            stroke: #4b5563;
+            stroke-width: 3;
+            pointer-events: none;
+        }
+        
+        /* Modal Animation */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-overlay { animation: fadeIn 0.2s ease-out; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased overflow-x-hidden">
+
+    <!-- Navbar -->
+    <nav class="glass sticky top-0 z-50 border-b border-gray-800/50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="activity" class="text-neon-400 w-8 h-8"></i>
+                <span class="text-xl font-bold tracking-wider text-white">DIANFIT<span class="neon-text">.AI</span></span>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+                <div id="auth-status" class="flex items-center gap-2 text-gray-400">
+                    <div class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div> Menghubungkan...
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-5xl mx-auto px-4 py-8 flex flex-col">
+        
+        <!-- Progress Stepper -->
+        <div class="w-full mb-10">
+            <div class="flex items-center justify-between relative">
+                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-dark-700 -z-10 rounded-full"></div>
+                <div id="progress-bar" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-neon-400 -z-10 transition-all duration-500 rounded-full w-0"></div>
+                
+                <!-- Step 1 -->
+                <div class="step-indicator flex flex-col items-center gap-2 cursor-pointer" onclick="app.goToStep(1)">
+                    <div id="step-circle-1" class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark-900 bg-neon-400 shadow-[0_0_15px_rgba(57,255,20,0.4)] transition-colors">1</div>
+                    <span class="text-xs md:text-sm font-medium text-white">Peralatan</span>
+                </div>
+                <!-- Step 2 -->
+                <div class="step-indicator flex flex-col items-center gap-2 cursor-pointer" onclick="app.goToStep(2)">
+                    <div id="step-circle-2" class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-gray-400 bg-dark-700 border-2 border-dark-700 transition-colors">2</div>
+                    <span class="text-xs md:text-sm font-medium text-gray-400" id="step-text-2">Otot</span>
+                </div>
+                <!-- Step 3 -->
+                <div class="step-indicator flex flex-col items-center gap-2">
+                    <div id="step-circle-3" class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-gray-400 bg-dark-700 border-2 border-dark-700 transition-colors">3</div>
+                    <span class="text-xs md:text-sm font-medium text-gray-400" id="step-text-3">Latihan</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEWS -->
+        <div class="relative flex-grow">
+            
+            <!-- STEP 1: EQUIPMENT -->
+            <section id="view-step-1" class="absolute inset-0 transition-opacity duration-300">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">Pilih Peralatan Anda</h2>
+                    <p class="text-gray-400">Pilih alat yang tersedia untuk sesi latihan ini.</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="equipment-grid">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="mt-10 text-center">
+                    <button onclick="app.nextStep()" class="neon-bg px-8 py-3 rounded-lg font-bold text-lg inline-flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Lanjut Pilih Otot <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- STEP 2: MUSCLES -->
+            <section id="view-step-2" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-300 hidden">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">Pilih Target Otot</h2>
+                    <p class="text-gray-400">Klik area pada peta tubuh untuk memilih otot yang ingin dilatih (disarankan 2-3).</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row justify-center items-center gap-8 lg:gap-16">
+                    <!-- Body Map Front -->
+                    <div class="glass-panel p-6 rounded-2xl relative w-full md:w-auto">
+                        <h3 class="text-center text-gray-300 mb-4 font-semibold tracking-widest">DEPAN</h3>
+                        <!-- Stylized SVG Front Body Map -->
+                        <svg class="muscle-svg" viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Background Outline -->
+                            <path class="body-outline" d="M100 20 C110 20, 115 30, 115 40 C115 50, 110 60, 100 60 C90 60, 85 50, 85 40 C85 30, 90 20, 100 20 Z" /> <!-- Head -->
+                            <path class="body-outline" d="M90 60 L110 60 L120 70 L140 75 L160 150 L170 200 L160 210 L150 200 L145 150 L130 180 L130 200 L120 220 L100 220 L80 220 L70 200 L70 180 L55 150 L50 200 L40 210 L30 200 L40 150 L60 75 L80 70 Z" /> <!-- Upper Body & Arms -->
+                            <path class="body-outline" d="M70 200 L130 200 L140 240 L130 380 L110 380 L100 260 L90 380 L70 380 L60 240 Z" /> <!-- Lower Body -->
+
+                            <!-- Interactive Muscle Groups (Front) -->
+                            <!-- Dada (Chest) -->
+                            <path id="m-dada" class="muscle-group" d="M100 80 C115 80, 125 90, 125 110 C125 120, 110 130, 100 130 C90 130, 75 120, 75 110 C75 90, 85 80, 100 80 Z" onclick="app.toggleMuscle('Dada', this)" />
+                            <!-- Perut (Abs) -->
+                            <path id="m-perut" class="muscle-group" d="M85 135 L115 135 L120 195 L80 195 Z" onclick="app.toggleMuscle('Perut', this)" />
+                            <path class="muscle-group" d="M85 135 L115 135 L120 195 L80 195 Z" onclick="app.toggleMuscle('Perut', document.getElementById('m-perut'))" style="fill:none; stroke: rgba(0,0,0,0.3); stroke-width:1; pointer-events:none;"/> <!-- Ab lines visual -->
+                            <line x1="85" y1="155" x2="115" y2="155" stroke="rgba(0,0,0,0.3)" stroke-width="1" pointer-events="none"/>
+                            <line x1="83" y1="175" x2="117" y2="175" stroke="rgba(0,0,0,0.3)" stroke-width="1" pointer-events="none"/>
+                            <line x1="100" y1="135" x2="100" y2="195" stroke="rgba(0,0,0,0.3)" stroke-width="1" pointer-events="none"/>
+                            
+                            <!-- Bahu (Shoulders Front) -->
+                            <path id="m-bahu-depan-l" class="muscle-group" d="M75 75 C65 75, 55 85, 55 105 C55 110, 65 115, 75 115 Z" onclick="app.toggleMuscle('Bahu', this)" />
+                            <path id="m-bahu-depan-r" class="muscle-group" d="M125 75 C135 75, 145 85, 145 105 C145 110, 135 115, 125 115 Z" onclick="app.toggleMuscle('Bahu', this)" />
+                            
+                            <!-- Bisep (Biceps) -->
+                            <path id="m-bisep-l" class="muscle-group" d="M55 110 C45 120, 50 145, 60 145 C65 145, 70 120, 70 110 Z" onclick="app.toggleMuscle('Bisep', this)" />
+                            <path id="m-bisep-r" class="muscle-group" d="M145 110 C155 120, 150 145, 140 145 C135 145, 130 120, 130 110 Z" onclick="app.toggleMuscle('Bisep', this)" />
+                            
+                            <!-- Lengan Bawah (Forearms Front) -->
+                            <path id="m-lengan-bawah-f-l" class="muscle-group" d="M60 150 L45 190 C45 195, 55 195, 55 190 L65 150 Z" onclick="app.toggleMuscle('Lengan Bawah', this)" />
+                            <path id="m-lengan-bawah-f-r" class="muscle-group" d="M140 150 L155 190 C155 195, 145 195, 145 190 L135 150 Z" onclick="app.toggleMuscle('Lengan Bawah', this)" />
+
+                            <!-- Paha Depan (Quads) -->
+                            <path id="m-paha-depan-l" class="muscle-group" d="M95 210 L75 220 L65 280 C70 300, 85 300, 95 280 Z" onclick="app.toggleMuscle('Paha Depan', this)" />
+                            <path id="m-paha-depan-r" class="muscle-group" d="M105 210 L125 220 L135 280 C130 300, 115 300, 105 280 Z" onclick="app.toggleMuscle('Paha Depan', this)" />
+
+                            <!-- Betis Depan (Calves Front - minimal) -->
+                            <path id="m-betis-depan-l" class="muscle-group" d="M90 310 L75 315 L70 360 C75 370, 85 370, 90 360 Z" onclick="app.toggleMuscle('Betis', this)" />
+                            <path id="m-betis-depan-r" class="muscle-group" d="M110 310 L125 315 L130 360 C125 370, 115 370, 110 360 Z" onclick="app.toggleMuscle('Betis', this)" />
+                        </svg>
+                    </div>
+
+                    <!-- Body Map Back -->
+                    <div class="glass-panel p-6 rounded-2xl relative w-full md:w-auto">
+                        <h3 class="text-center text-gray-300 mb-4 font-semibold tracking-widest">BELAKANG</h3>
+                        <svg class="muscle-svg" viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Background Outline -->
+                            <path class="body-outline" d="M100 20 C110 20, 115 30, 115 40 C115 50, 110 60, 100 60 C90 60, 85 50, 85 40 C85 30, 90 20, 100 20 Z" />
+                            <path class="body-outline" d="M90 60 L110 60 L120 70 L140 75 L160 150 L170 200 L160 210 L150 200 L145 150 L130 180 L130 200 L120 220 L100 220 L80 220 L70 200 L70 180 L55 150 L50 200 L40 210 L30 200 L40 150 L60 75 L80 70 Z" />
+                            <path class="body-outline" d="M70 200 L130 200 L140 240 L130 380 L110 380 L100 260 L90 380 L70 380 L60 240 Z" />
+
+                            <!-- Interactive Muscle Groups (Back) -->
+                            <!-- Trapezius (Traps) -->
+                            <path id="m-traps" class="muscle-group" d="M100 60 L120 75 L100 110 L80 75 Z" onclick="app.toggleMuscle('Punggung Atas', this)" />
+                            
+                            <!-- Punggung Lebar (Lats) -->
+                            <path id="m-lats-l" class="muscle-group" d="M100 115 L75 115 C70 140, 85 160, 100 160 Z" onclick="app.toggleMuscle('Lats', this)" />
+                            <path id="m-lats-r" class="muscle-group" d="M100 115 L125 115 C130 140, 115 160, 100 160 Z" onclick="app.toggleMuscle('Lats', this)" />
+                            
+                            <!-- Punggung Bawah (Lower Back) -->
+                            <path id="m-punggung-bawah" class="muscle-group" d="M85 165 L115 165 C120 185, 115 200, 100 200 C85 200, 80 185, 85 165 Z" onclick="app.toggleMuscle('Punggung Bawah', this)" />
+
+                            <!-- Trisep (Triceps) -->
+                            <path id="m-trisep-l" class="muscle-group" d="M75 80 C60 85, 55 115, 65 140 C70 120, 75 100, 75 80 Z" onclick="app.toggleMuscle('Trisep', this)" />
+                            <path id="m-trisep-r" class="muscle-group" d="M125 80 C140 85, 145 115, 135 140 C130 120, 125 100, 125 80 Z" onclick="app.toggleMuscle('Trisep', this)" />
+
+                            <!-- Bokong (Glutes) -->
+                            <path id="m-bokong-l" class="muscle-group" d="M100 205 L70 205 C65 225, 75 240, 95 240 Z" onclick="app.toggleMuscle('Bokong', this)" />
+                            <path id="m-bokong-r" class="muscle-group" d="M100 205 L130 205 C135 225, 125 240, 105 240 Z" onclick="app.toggleMuscle('Bokong', this)" />
+
+                            <!-- Paha Belakang (Hamstrings) -->
+                            <path id="m-paha-belakang-l" class="muscle-group" d="M95 245 L70 245 C65 260, 70 290, 85 290 C95 290, 95 260, 95 245 Z" onclick="app.toggleMuscle('Paha Belakang', this)" />
+                            <path id="m-paha-belakang-r" class="muscle-group" d="M105 245 L130 245 C135 260, 130 290, 115 290 C105 290, 105 260, 105 245 Z" onclick="app.toggleMuscle('Paha Belakang', this)" />
+
+                            <!-- Betis (Calves Back) -->
+                            <path id="m-betis-belakang-l" class="muscle-group" d="M85 305 L70 305 C65 330, 75 360, 85 360 C90 360, 90 330, 85 305 Z" onclick="app.toggleMuscle('Betis', this)" />
+                            <path id="m-betis-belakang-r" class="muscle-group" d="M115 305 L130 305 C135 330, 125 360, 115 360 C110 360, 110 330, 115 305 Z" onclick="app.toggleMuscle('Betis', this)" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center flex flex-col items-center gap-4">
+                    <div class="text-sm text-gray-400">Otot Terpilih: <span id="selected-muscles-text" class="text-white font-semibold">-</span></div>
+                    <div class="flex gap-4">
+                        <button onclick="app.goToStep(1)" class="glass px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">Kembali</button>
+                        <button onclick="app.generateWorkout()" class="neon-bg px-8 py-3 rounded-lg font-bold text-lg inline-flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Buat Latihan <i data-lucide="zap" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 3: WORKOUT GENERATED -->
+            <section id="view-step-3" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-300 hidden flex flex-col">
+                <div class="flex-grow">
+                    <div class="bg-dark-800/80 backdrop-blur-md border border-dark-700 rounded-xl p-4 mb-6 flex justify-between items-center text-sm">
+                        <p class="text-gray-300">Pertahankan kebugaran Anda. Sesuaikan latihan di bawah ini.</p>
+                        <button onclick="app.openAddExerciseModal()" class="text-neon-400 hover:text-neon-500 font-medium flex items-center gap-1 bg-dark-900/50 px-3 py-1.5 rounded-md border border-dark-700 hover:border-neon-400/50 transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Tambah
+                        </button>
+                    </div>
+
+                    <div id="workout-list" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <div id="empty-workout-msg" class="hidden text-center py-10">
+                        <i data-lucide="search-x" class="w-12 h-12 text-gray-600 mx-auto mb-3"></i>
+                        <h3 class="text-lg font-medium text-gray-300">Tidak ada latihan yang cocok.</h3>
+                        <p class="text-sm text-gray-500 mt-1">Coba pilih peralatan atau otot yang berbeda.</p>
+                        <button onclick="app.goToStep(2)" class="mt-4 text-neon-400 underline text-sm">Ubah Pemilihan</button>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-gray-800 pt-6 flex justify-between items-center bg-dark-900 sticky bottom-0 pb-4">
+                    <button onclick="app.goToStep(2)" class="text-gray-400 hover:text-white font-medium flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Kembali
+                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="app.saveWorkout()" id="btn-save-workout" class="glass px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-800 transition-colors flex items-center gap-2 border border-gray-700">
+                            <i data-lucide="save" class="w-4 h-4"></i> Simpan Sesi
+                        </button>
+                        <button class="neon-bg px-8 py-2.5 rounded-lg font-bold text-gray-900 flex items-center gap-2 hover:brightness-110 transition-all">
+                            Mulai Latihan <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Video Modal -->
+    <div id="video-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm hidden items-center justify-center modal-overlay">
+        <div class="bg-dark-900 border border-gray-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl relative">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-dark-800/50">
+                <h3 id="video-modal-title" class="font-bold text-lg text-white">Tutorial Gerakan</h3>
+                <button onclick="app.closeVideoModal()" class="text-gray-400 hover:text-white p-1 bg-dark-700 rounded-full hover:bg-gray-600 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="aspect-video bg-black relative">
+                <iframe id="video-iframe" class="absolute inset-0 w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Exercise Modal -->
+    <div id="add-modal" class="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm hidden items-center justify-center modal-overlay">
+        <div class="bg-dark-800 border border-gray-700 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="font-bold text-white">Tambah Latihan Manual</h3>
+                <button onclick="app.closeAddExerciseModal()" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-4 max-h-[60vh] overflow-y-auto" id="add-exercise-list">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div class="bg-dark-800 border-l-4 border-neon-400 shadow-lg shadow-black/50 p-4 rounded-r-lg flex items-center gap-3">
+            <i data-lucide="check-circle" class="text-neon-400 w-5 h-5"></i>
+            <span id="toast-msg" class="text-white font-medium text-sm">Berhasil disimpan!</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // MOCK DATABASE EKSKLUSIF (AI Logic Basis)
+        const EXERCISES_DB = [
+            // DADA
+            { id: 'ch1', name: 'Push Up', eq: 'Bodyweight', mus: ['Dada', 'Trisep', 'Bahu'], vid: 'IODxDxX7oi4' },
+            { id: 'ch2', name: 'Dumbbell Bench Press', eq: 'Dumbbell', mus: ['Dada', 'Trisep'], vid: 'VmB1G1K7v94' },
+            { id: 'ch3', name: 'Barbell Bench Press', eq: 'Barbell', mus: ['Dada', 'Trisep'], vid: 'rT7DgCr-3pg' },
+            { id: 'ch4', name: 'Chest Fly (Band)', eq: 'Band', mus: ['Dada'], vid: 'Iwe6AmxVf7o' },
+            // PUNGGUNG & LATS
+            { id: 'bk1', name: 'Pull Up', eq: 'Pull-up bar', mus: ['Lats', 'Punggung Atas', 'Bisep'], vid: 'eGo4IYtlbpU' },
+            { id: 'bk2', name: 'Dumbbell Row', eq: 'Dumbbell', mus: ['Lats', 'Punggung Atas', 'Bisep'], vid: 'roCP6wCLLvk' },
+            { id: 'bk3', name: 'Kettlebell Row', eq: 'Kettlebell', mus: ['Lats', 'Punggung Atas'], vid: 'yH2P6F1K1Zk' },
+            { id: 'bk4', name: 'Superman', eq: 'Bodyweight', mus: ['Punggung Bawah', 'Bokong'], vid: 'z6PJMT2y8GQ' },
+            // BAHU
+            { id: 'sh1', name: 'Overhead Press', eq: 'Dumbbell', mus: ['Bahu', 'Trisep'], vid: 'qEwKCR5JCog' },
+            { id: 'sh2', name: 'Lateral Raise', eq: 'Dumbbell', mus: ['Bahu'], vid: '3VcKaXpzqRo' },
+            { id: 'sh3', name: 'Pike Push Up', eq: 'Bodyweight', mus: ['Bahu', 'Trisep'], vid: 'sposDXWEB0A' },
+            { id: 'sh4', name: 'Plate Front Raise', eq: 'Plate', mus: ['Bahu'], vid: '24M5Zq1XJEQ' },
+            // KAKI (PAHA, BOKONG, BETIS)
+            { id: 'lg1', name: 'Bodyweight Squat', eq: 'Bodyweight', mus: ['Paha Depan', 'Bokong'], vid: 'YaXPRqUwItQ' },
+            { id: 'lg2', name: 'Goblet Squat', eq: 'Kettlebell', mus: ['Paha Depan', 'Bokong'], vid: 'MeIiIdhgPgl' },
+            { id: 'lg3', name: 'Romanian Deadlift', eq: 'Dumbbell', mus: ['Paha Belakang', 'Bokong', 'Punggung Bawah'], vid: 'JCXUYuzwNrM' },
+            { id: 'lg4', name: 'Barbell Squat', eq: 'Barbell', mus: ['Paha Depan', 'Bokong', 'Paha Belakang'], vid: '1oed-UmAxFs' },
+            { id: 'lg5', name: 'Calf Raises', eq: 'Bodyweight', mus: ['Betis'], vid: 'gwLzBJYoWlI' },
+            { id: 'lg6', name: 'Lunges', eq: 'Dumbbell', mus: ['Paha Depan', 'Bokong'], vid: 'QOVaHwm-Q6U' },
+            // LENGAN (BISEP, TRISEP)
+            { id: 'ar1', name: 'Bicep Curl', eq: 'Dumbbell', mus: ['Bisep'], vid: 'ykJmrZ5v0Oo' },
+            { id: 'ar2', name: 'Tricep Extension', eq: 'Dumbbell', mus: ['Trisep'], vid: 'nRiJVZDpdL0' },
+            { id: 'ar3', name: 'Band Bicep Curl', eq: 'Band', mus: ['Bisep'], vid: '7Q3Z4r1L0o4' },
+            { id: 'ar4', name: 'Bench Dips', eq: 'Bench', mus: ['Trisep', 'Dada'], vid: '0326dy_-CzM' },
+            // PERUT (CORE)
+            { id: 'ab1', name: 'Crunch', eq: 'Bodyweight', mus: ['Perut'], vid: 'Xywixh1XIkw' },
+            { id: 'ab2', name: 'Plank', eq: 'Bodyweight', mus: ['Perut', 'Punggung Bawah'], vid: 'pSHjTRCQxIw' },
+            { id: 'ab3', name: 'Russian Twist', eq: 'Plate', mus: ['Perut'], vid: 'wkD8rjkodUI' },
+            { id: 'ab4', name: 'Kettlebell Halo', eq: 'Kettlebell', mus: ['Perut', 'Bahu'], vid: 'x4T1Xb4c0_E' }
+        ];
+
+        const EQUIPMENT_LIST = [
+            { id: 'Bodyweight', icon: 'user', label: 'Bodyweight', type: 'lucide' },
+            { id: 'Dumbbell', icon: 'dumbbell', label: 'Dumbbell', type: 'lucide' },
+            { id: 'Barbell', icon: 'git-commit', label: 'Barbell', type: 'lucide' }, // Using git-commit as visual proxy for barbell
+            { id: 'Kettlebell', icon: 'weight', label: 'Kettlebell', type: 'lucide' },
+            { id: 'Band', icon: 'minus', label: 'Band', type: 'lucide' }, // Using minus as a proxy for band
+            { id: 'Plate', icon: 'circle-dot', label: 'Plate', type: 'lucide' },
+            { id: 'Pull-up bar', icon: 'align-justify', label: 'Pull-up bar', type: 'lucide' },
+            { id: 'Bench', icon: 'table', label: 'Bench', type: 'lucide' },
+        ];
+
+        // System State
+        window.appState = {
+            step: 1,
+            selectedEq: new Set(),
+            selectedMus: new Set(),
+            currentWorkout: [],
+            replaceIndex: null,
+            firebaseApp: null,
+            auth: null,
+            db: null,
+            user: null,
+            appId: typeof __app_id !== 'undefined' ? __app_id : 'dianfit-demo'
+        };
+
+        // UI Manipulation Functions attached to window for global access from HTML onclick
+        window.app = {
+            init: async function() {
+                this.renderEquipment();
+                lucide.createIcons();
+                await this.initFirebase();
+            },
+
+            async initFirebase() {
+                try {
+                    const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+                    const config = JSON.parse(configStr);
+                    
+                    if (Object.keys(config).length > 0) {
+                        appState.firebaseApp = initializeApp(config);
+                        appState.auth = getAuth(appState.firebaseApp);
+                        appState.db = getFirestore(appState.firebaseApp);
+
+                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        
+                        if (token) {
+                            await signInWithCustomToken(appState.auth, token);
+                        } else {
+                            await signInAnonymously(appState.auth);
+                        }
+
+                        onAuthStateChanged(appState.auth, (user) => {
+                            appState.user = user;
+                            const authStatus = document.getElementById('auth-status');
+                            if (user) {
+                                authStatus.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-neon-400"></i> <span class="text-neon-400 text-xs hidden sm:inline">Online</span>`;
+                            } else {
+                                authStatus.innerHTML = `<span class="text-red-400 text-xs">Offline</span>`;
+                            }
+                            lucide.createIcons();
+                        });
+                    }
+                } catch (e) {
+                    console.error("Firebase Init Error:", e);
+                    document.getElementById('auth-status').innerHTML = `<span class="text-yellow-500 text-xs">Mode Lokal</span>`;
+                }
+            },
+
+            // Navigation
+            goToStep: function(step) {
+                if(step === 2 && appState.selectedEq.size === 0) {
+                    this.showToast("Pilih minimal 1 peralatan!", true);
+                    return;
+                }
+                if(step === 3 && appState.selectedMus.size === 0) {
+                    this.showToast("Pilih minimal 1 area otot!", true);
+                    return;
+                }
+
+                // Update UI Step Indicators
+                appState.step = step;
+                
+                // Progress Bar Width
+                const progressWidth = step === 1 ? '0%' : step === 2 ? '50%' : '100%';
+                document.getElementById('progress-bar').style.width = progressWidth;
+
+                // Circles & Text styling
+                for (let i = 1; i <= 3; i++) {
+                    const circle = document.getElementById(`step-circle-${i}`);
+                    const text = document.getElementById(`step-text-${i}`);
+                    if (i < step) {
+                        // Completed
+                        circle.className = "w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark-900 bg-neon-500 transition-colors cursor-pointer";
+                        circle.innerHTML = `<i data-lucide="check" class="w-5 h-5"></i>`;
+                        if(text) text.className = "text-xs md:text-sm font-medium text-neon-500";
+                    } else if (i === step) {
+                        // Current
+                        circle.className = "w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark-900 bg-neon-400 shadow-[0_0_15px_rgba(57,255,20,0.4)] transition-colors";
+                        circle.innerHTML = i;
+                        if(text) text.className = "text-xs md:text-sm font-medium text-white";
+                    } else {
+                        // Future
+                        circle.className = "w-10 h-10 rounded-full flex items-center justify-center font-bold text-gray-400 bg-dark-700 border-2 border-dark-700 transition-colors";
+                        circle.innerHTML = i;
+                        if(text) text.className = "text-xs md:text-sm font-medium text-gray-400";
+                    }
+                }
+                lucide.createIcons();
+
+                // Switch Views
+                const views = ['view-step-1', 'view-step-2', 'view-step-3'];
+                views.forEach((v, idx) => {
+                    const el = document.getElementById(v);
+                    if (idx + 1 === step) {
+                        el.classList.remove('hidden');
+                        // Small delay for fade effect
+                        setTimeout(() => {
+                            el.classList.remove('opacity-0', 'pointer-events-none');
+                        }, 50);
+                    } else {
+                        el.classList.add('opacity-0', 'pointer-events-none');
+                        setTimeout(() => {
+                            if(appState.step !== idx + 1) el.classList.add('hidden');
+                        }, 300);
+                    }
+                });
+            },
+            
+            nextStep: function() {
+                this.goToStep(appState.step + 1);
+            },
+
+            // Step 1: Equipment
+            renderEquipment: function() {
+                const grid = document.getElementById('equipment-grid');
+                grid.innerHTML = '';
+                EQUIPMENT_LIST.forEach(eq => {
+                    const isSelected = appState.selectedEq.has(eq.id);
+                    const el = document.createElement('div');
+                    el.className = `glass rounded-xl p-4 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all border-2 ${isSelected ? 'neon-border selected bg-gray-800/80' : 'border-transparent hover:bg-gray-800/50 hover:border-gray-600'}`;
+                    el.onclick = () => this.toggleEquipment(eq.id, el);
+                    
+                    let iconHtml = `<i data-lucide="${eq.icon}" class="w-10 h-10 ${isSelected ? 'text-neon-400' : 'text-gray-400'}"></i>`;
+                    
+                    el.innerHTML = `
+                        ${iconHtml}
+                        <span class="font-medium text-sm ${isSelected ? 'text-white' : 'text-gray-300'}">${eq.label}</span>
+                    `;
+                    grid.appendChild(el);
+                });
+            },
+
+            toggleEquipment: function(id) {
+                if (appState.selectedEq.has(id)) {
+                    appState.selectedEq.delete(id);
+                } else {
+                    appState.selectedEq.add(id);
+                }
+                this.renderEquipment();
+                lucide.createIcons();
+            },
+
+            // Step 2: Muscles
+            toggleMuscle: function(muscleName, svgElement) {
+                // Handle complex mappings (e.g., clicking left bicep highlights both in logic, or just highlights that specific path)
+                // For simplicity, UI highlights the specific path clicked, but logic adds the group name.
+                
+                // Find all paths that belong to this muscle group based on naming convention or just toggle the one clicked and add logic
+                const isSelected = svgElement.classList.contains('selected');
+                
+                if (isSelected) {
+                    svgElement.classList.remove('selected');
+                    // Check if other paths for this muscle are still selected before removing from Set
+                    appState.selectedMus.delete(muscleName); 
+                } else {
+                    svgElement.classList.add('selected');
+                    appState.selectedMus.add(muscleName);
+                }
+
+                const txt = document.getElementById('selected-muscles-text');
+                txt.textContent = appState.selectedMus.size > 0 
+                    ? Array.from(appState.selectedMus).join(', ') 
+                    : '-';
+            },
+
+            // Step 3: Generation & Customization
+            generateWorkout: function() {
+                // Core AI Logic Mockup
+                const eqSet = appState.selectedEq;
+                const musSet = appState.selectedMus;
+
+                let possibleExercises = EXERCISES_DB.filter(ex => {
+                    // Check if user has equipment (Bodyweight is always valid if selected, but sometimes valid even if not? Let's be strict: must select BW if they want BW exercises)
+                    const hasEq = eqSet.has(ex.eq);
+                    // Check if exercise targets at least one selected muscle
+                    const hitsMuscle = ex.mus.some(m => musSet.has(m));
+                    return hasEq && hitsMuscle;
+                });
+
+                // Pick a few distinct ones (max 6 for dashboard)
+                appState.currentWorkout = this.shuffleArray([...possibleExercises]).slice(0, 6);
+                
+                this.renderWorkoutList();
+                this.goToStep(3);
+            },
+
+            renderWorkoutList: function() {
+                const list = document.getElementById('workout-list');
+                const emptyMsg = document.getElementById('empty-workout-msg');
+                list.innerHTML = '';
+
+                if (appState.currentWorkout.length === 0) {
+                    emptyMsg.classList.remove('hidden');
+                    return;
+                }
+                emptyMsg.classList.add('hidden');
+
+                appState.currentWorkout.forEach((ex, index) => {
+                    const el = document.createElement('div');
+                    el.className = "glass p-4 rounded-xl flex items-center justify-between border border-gray-800 hover:border-gray-700 transition-colors group";
+                    
+                    // Equipment indicator logic
+                    let eqBadgeColor = 'bg-gray-700 text-gray-300';
+                    let eqLetter = ex.eq.charAt(0).toUpperCase();
+                    if(ex.eq === 'Dumbbell') { eqBadgeColor = 'bg-blue-900/50 text-blue-400 border border-blue-800/50'; eqLetter = 'D'; }
+                    else if(ex.eq === 'Bodyweight') { eqBadgeColor = 'bg-green-900/50 text-green-400 border border-green-800/50'; eqLetter = 'O'; }
+                    else if(ex.eq === 'Kettlebell') { eqBadgeColor = 'bg-orange-900/50 text-orange-400 border border-orange-800/50'; eqLetter = 'K'; }
+                    else if(ex.eq === 'Barbell') { eqBadgeColor = 'bg-purple-900/50 text-purple-400 border border-purple-800/50'; eqLetter = 'B'; }
+
+                    el.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <i data-lucide="grip-vertical" class="text-gray-600 cursor-move w-5 h-5 hidden sm:block"></i>
+                            <div class="w-8 h-8 rounded-full ${eqBadgeColor} flex items-center justify-center font-bold text-sm shrink-0">
+                                ${eqLetter}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-sm sm:text-base">${ex.name}</h4>
+                                <p class="text-xs text-gray-500">${ex.mus.join(', ')}</p>
+                            </div>
+                            <button onclick="app.openVideo('${ex.name}', '${ex.vid}')" class="ml-2 text-gray-400 hover:text-neon-400 transition-colors" title="Lihat Tutorial">
+                                <i data-lucide="video" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button onclick="app.swapExercise(${index})" class="bg-dark-700 hover:bg-dark-600 text-gray-300 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-colors">
+                                <i data-lucide="shuffle" class="w-3 h-3"></i> <span class="hidden sm:inline">Acak</span>
+                            </button>
+                            <button onclick="app.openAddExerciseModal(${index})" class="bg-dark-700 hover:bg-dark-600 text-gray-300 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-colors">
+                                <i data-lucide="wand-2" class="w-3 h-3"></i> <span class="hidden sm:inline">Pilih</span>
+                            </button>
+                            <button onclick="app.removeExercise(${index})" class="bg-red-900/30 hover:bg-red-900/60 text-red-400 px-3 py-1.5 rounded text-xs font-medium transition-colors border border-red-900/50">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+                lucide.createIcons();
+            },
+
+            swapExercise: function(index) {
+                // Find an alternative exercise with similar equipment/muscles not currently in list
+                const currentEx = appState.currentWorkout[index];
+                const pool = EXERCISES_DB.filter(ex => 
+                    (appState.selectedEq.has(ex.eq) || appState.selectedEq.has('Bodyweight')) &&
+                    ex.id !== currentEx.id &&
+                    !appState.currentWorkout.some(w => w.id === ex.id)
+                );
+
+                if (pool.length > 0) {
+                    const newEx = pool[Math.floor(Math.random() * pool.length)];
+                    appState.currentWorkout[index] = newEx;
+                    this.renderWorkoutList();
+                } else {
+                    this.showToast("Tidak ada alternatif lain tersedia.", true);
+                }
+            },
+
+            removeExercise: function(index) {
+                appState.currentWorkout.splice(index, 1);
+                this.renderWorkoutList();
+            },
+
+            // Add Exercise Modal
+            openAddExerciseModal: function(replaceIdx = null) {
+                appState.replaceIndex = replaceIdx;
+                const list = document.getElementById('add-exercise-list');
+                list.innerHTML = '';
+                
+                // Show exercises not in current workout, but match equipment
+                const available = EXERCISES_DB.filter(ex => 
+                    (appState.selectedEq.has(ex.eq) || ex.eq === 'Bodyweight') && 
+                    !appState.currentWorkout.some(w => w.id === ex.id)
+                );
+
+                if (available.length === 0) {
+                    list.innerHTML = '<p class="text-center text-gray-400 py-4">Semua latihan yang cocok sudah ditambahkan.</p>';
+                } else {
+                    available.forEach(ex => {
+                        const el = document.createElement('div');
+                        el.className = "flex justify-between items-center p-3 border-b border-gray-700 hover:bg-gray-800/50 transition-colors";
+                        el.innerHTML = `
+                            <div>
+                                <h4 class="text-white text-sm font-medium">${ex.name}</h4>
+                                <span class="text-xs text-gray-500">${ex.eq}</span>
+                            </div>
+                            <button onclick="app.addSpecificExercise('${ex.id}')" class="text-neon-400 hover:bg-neon-400/10 p-1.5 rounded">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        `;
+                        list.appendChild(el);
+                    });
+                }
+                
+                document.getElementById('add-modal').classList.remove('hidden');
+                document.getElementById('add-modal').classList.add('flex');
+                lucide.createIcons();
+            },
+
+            closeAddExerciseModal: function() {
+                appState.replaceIndex = null;
+                document.getElementById('add-modal').classList.add('hidden');
+                document.getElementById('add-modal').classList.remove('flex');
+            },
+
+            addSpecificExercise: function(id) {
+                const ex = EXERCISES_DB.find(e => e.id === id);
+                if(ex) {
+                    if (appState.replaceIndex !== null) {
+                        appState.currentWorkout[appState.replaceIndex] = ex;
+                    } else {
+                        appState.currentWorkout.push(ex);
+                    }
+                    this.renderWorkoutList();
+                    this.closeAddExerciseModal();
+                }
+            },
+
+            // Video Modal
+            openVideo: function(title, youtubeId) {
+                document.getElementById('video-modal-title').textContent = title;
+                // Using youtube embed
+                document.getElementById('video-iframe').src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1`;
+                document.getElementById('video-modal').classList.remove('hidden');
+                document.getElementById('video-modal').classList.add('flex');
+            },
+            closeVideoModal: function() {
+                document.getElementById('video-modal').classList.add('hidden');
+                document.getElementById('video-modal').classList.remove('flex');
+                document.getElementById('video-iframe').src = '';
+            },
+
+            // Firebase Save
+            saveWorkout: async function() {
+                if (!appState.user || !appState.db) {
+                    this.showToast("Database tidak terhubung.", true);
+                    return;
+                }
+                if (appState.currentWorkout.length === 0) return;
+
+                const btn = document.getElementById('btn-save-workout');
+                btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Menyimpan...`;
+                btn.disabled = true;
+
+                try {
+                    // STRICT FIREBASE PATH RULE APPLIED
+                    const userRef = collection(appState.db, 'artifacts', appState.appId, 'users', appState.user.uid, 'workouts');
+                    
+                    const workoutData = {
+                        timestamp: serverTimestamp(),
+                        equipment: Array.from(appState.selectedEq),
+                        muscles: Array.from(appState.selectedMus),
+                        exercises: appState.currentWorkout.map(ex => ex.name)
+                    };
+
+                    await addDoc(userRef, workoutData);
+                    this.showToast("Sesi latihan berhasil disimpan ke Cloud!");
+                    
+                } catch (error) {
+                    console.error("Error saving doc: ", error);
+                    this.showToast("Gagal menyimpan data.", true);
+                } finally {
+                    btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Simpan Sesi`;
+                    btn.disabled = false;
+                    lucide.createIcons();
+                }
+            },
+
+            // Utils
+            shuffleArray: function(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            },
+
+            showToast: function(msg, isError = false) {
+                const toast = document.getElementById('toast');
+                const content = toast.firstElementChild;
+                
+                const iconName = isError ? 'alert-circle' : 'check-circle';
+                const iconColor = isError ? 'text-red-500' : 'text-neon-400';
+                const borderColor = isError ? 'border-red-500' : 'border-neon-400';
+                const oldBorderColor = isError ? 'border-neon-400' : 'border-red-500';
+                
+                content.classList.replace(oldBorderColor, borderColor);
+                content.innerHTML = `
+                    <i data-lucide="${iconName}" class="${iconColor} w-5 h-5"></i>
+                    <span id="toast-msg" class="text-white font-medium text-sm">${msg}</span>
+                `;
+                
+                lucide.createIcons();
+                
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            }
+        };
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
